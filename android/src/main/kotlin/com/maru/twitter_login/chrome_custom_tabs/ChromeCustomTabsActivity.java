@@ -35,18 +35,35 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
 
         setContentView(R.layout.chrome_custom_tab);
 
-        Bundle bundle = getIntent().getExtras();
-        assert bundle != null;
+        Intent intent = getIntent();
+        Bundle bundle = intent != null ? intent.getExtras() : null;
+        if (bundle == null) {
+            finish();
+            return;
+        }
 
         String managerId = bundle.getString("managerId");
-        manager = ChromeSafariBrowserManager.shared.get(managerId);
+        manager = managerId != null ? ChromeSafariBrowserManager.shared.get(managerId) : null;
+        if (manager == null || manager.plugin == null || manager.plugin.getMessenger() == null) {
+            finish();
+            return;
+        }
 
         // Create a methodChannel for each Activity.
         id = bundle.getString("id");
+        if (id == null || id.isEmpty()) {
+            finish();
+            return;
+        }
         channel = new MethodChannel(manager.plugin.getMessenger(), "twitter_login/auth_browser_" + id);
         channel.setMethodCallHandler(this);
 
         final String url = bundle.getString("url");
+        if (url == null || url.isEmpty()) {
+            close();
+            dispose();
+            return;
+        }
 
         final ChromeCustomTabsActivity chromeCustomTabsActivity = this;
 
@@ -54,6 +71,9 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
         helper.setConnectionCallback(new CustomTabActivityHelper.ConnectionCallback() {
             @Override
             public void onCustomTabsConnected() {
+                if (isFinishing()) {
+                    return;
+                }
                 session = helper.getSession();
                 Uri uri = Uri.parse(url);
                 helper.mayLaunchUrl(uri, null, null);
@@ -90,13 +110,23 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
     @Override
     protected void onStart() {
         super.onStart();
-        helper.bindCustomTabsService(this);
+        if (helper != null && !isFinishing()) {
+            helper.bindCustomTabsService(this);
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        helper.unbindCustomTabsService(this);
+        if (helper != null) {
+            helper.unbindCustomTabsService(this);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        dispose();
+        super.onDestroy();
     }
 
     @Override
@@ -108,14 +138,19 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
     }
 
     public void dispose() {
-        channel.setMethodCallHandler(null);
+        if (channel != null) {
+            channel.setMethodCallHandler(null);
+            channel = null;
+        }
         manager = null;
     }
 
     public void close() {
         session = null;
         finish();
-        Map<String, Object> obj = new HashMap<>();
-        channel.invokeMethod("onClose", obj);
+        if (channel != null) {
+            Map<String, Object> obj = new HashMap<>();
+            channel.invokeMethod("onClose", obj);
+        }
     }
 }

@@ -1,0 +1,8 @@
+gradle.beforeProject { project ->
+    if (project.name == 'twitter_login') {
+        project.afterEvaluate {
+            project.android.compileSdkVersion 34
+            project.android.defaultConfig.minSdkVersion 24
+        }
+    }
+}
