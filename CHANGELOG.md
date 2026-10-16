@@ -156,6 +156,7 @@
 
 ## Unreleased
 
+* Prevent Android Custom Tabs from reopening when the login activity restarts, reconnects to the browser service, or is recreated.
 * Safely close Android Custom Tabs activities restored without login parameters or a live browser manager.
 * Preserve browser cancellation callbacks and clean up partially initialized activities.
 * Add Android lifecycle regression tests and the namespace required by Android Gradle Plugin 8.

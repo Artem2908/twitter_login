@@ -21,6 +21,9 @@ import io.flutter.plugin.common.MethodChannel;
 
 public class ChromeCustomTabsActivity extends Activity implements MethodChannel.MethodCallHandler {
 
+    private static final String STATE_BROWSER_LAUNCHED = "twitter_login.browserLaunched";
+    private boolean browserLaunched;
+
     public MethodChannel channel;
     public String id;
     public CustomTabsIntent.Builder builder;
@@ -34,6 +37,9 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.chrome_custom_tab);
+
+        browserLaunched = savedInstanceState != null
+                && savedInstanceState.getBoolean(STATE_BROWSER_LAUNCHED);
 
         Intent intent = getIntent();
         Bundle bundle = intent != null ? intent.getExtras() : null;
@@ -71,7 +77,7 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
         helper.setConnectionCallback(new CustomTabActivityHelper.ConnectionCallback() {
             @Override
             public void onCustomTabsConnected() {
-                if (isFinishing()) {
+                if (isFinishing() || channel == null || browserLaunched) {
                     return;
                 }
                 session = helper.getSession();
@@ -80,6 +86,7 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
                 builder = new CustomTabsIntent.Builder(session);
                 CustomTabsIntent customTabsIntent = builder.build();
                 prepareCustomTabsIntent(customTabsIntent);
+                browserLaunched = true;
                 CustomTabActivityHelper.openCustomTab(
                         chromeCustomTabsActivity,
                         customTabsIntent,
@@ -110,9 +117,15 @@ public class ChromeCustomTabsActivity extends Activity implements MethodChannel.
     @Override
     protected void onStart() {
         super.onStart();
-        if (helper != null && !isFinishing()) {
+        if (helper != null && !isFinishing() && !browserLaunched) {
             helper.bindCustomTabsService(this);
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(STATE_BROWSER_LAUNCHED, browserLaunched);
+        super.onSaveInstanceState(outState);
     }
 
     @Override

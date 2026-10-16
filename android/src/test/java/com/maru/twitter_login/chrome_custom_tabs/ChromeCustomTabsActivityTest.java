@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.os.Bundle;
 
 import com.maru.twitter_login.TwitterLoginPlugin;
 
@@ -14,8 +15,11 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowActivity;
+import org.robolectric.util.ReflectionHelpers;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -135,6 +139,110 @@ public class ChromeCustomTabsActivityTest {
     }
 
     @Test
+    public void repeatedServiceConnectionsLaunchOnlyOneBrowser() {
+        ChromeCustomTabsActivity activity = createActivity(validIntent());
+        CustomTabActivityHelper.ConnectionCallback callback = connectionCallback(activity);
+
+        callback.onCustomTabsConnected();
+        callback.onCustomTabsConnected();
+
+        assertBrowserLaunched(activity);
+        assertNull(Shadows.shadowOf(activity).getNextStartedActivityForResult());
+        assertTrue(messenger.calls.isEmpty());
+    }
+
+    @Test
+    public void returningBeforeBrowserResultDoesNotReopenOrCancelLogin() {
+        ChromeCustomTabsActivity activity = createActivity(validIntent());
+        activity.onStart();
+        connectionCallback(activity).onCustomTabsConnected();
+        assertBrowserLaunched(activity);
+
+        activity.onStop();
+        activity.onStart();
+        connectionCallback(activity).onCustomTabsConnected();
+
+        assertNull(Shadows.shadowOf(activity).getNextStartedActivityForResult());
+        assertFalse(activity.isFinishing());
+        assertTrue(messenger.calls.isEmpty());
+        assertTrue(messenger.handlers.containsKey("twitter_login/auth_browser_browser"));
+
+        activity.onActivityResult(0, Activity.RESULT_CANCELED, null);
+
+        assertTrue(activity.isFinishing());
+        assertEquals(1, messenger.calls.size());
+        assertEquals("twitter_login/auth_browser_browser:onClose", messenger.calls.get(0));
+    }
+
+    @Test
+    public void recreationWhileBrowserIsOpenDoesNotLaunchAnotherBrowser() {
+        ChromeCustomTabsActivity activity = createActivity(validIntent());
+        connectionCallback(activity).onCustomTabsConnected();
+        assertBrowserLaunched(activity);
+
+        Bundle state = new Bundle();
+        controller.saveInstanceState(state).destroy();
+        controller = Robolectric.buildActivity(ChromeCustomTabsActivity.class, validIntent())
+                .create(state);
+        ChromeCustomTabsActivity restored = controller.get();
+        restored.onStart();
+        connectionCallback(restored).onCustomTabsConnected();
+
+        assertNull(Shadows.shadowOf(restored).getNextStartedActivityForResult());
+        assertFalse(restored.isFinishing());
+        assertTrue(messenger.calls.isEmpty());
+
+        restored.onActivityResult(0, Activity.RESULT_CANCELED, null);
+
+        assertEquals(1, messenger.calls.size());
+        assertFalse(messenger.handlers.containsKey("twitter_login/auth_browser_browser"));
+    }
+
+    @Test
+    public void recreationBeforeServiceConnectionStillLaunchesBrowser() {
+        createActivity(validIntent());
+        Bundle state = new Bundle();
+        controller.saveInstanceState(state).destroy();
+        controller = Robolectric.buildActivity(ChromeCustomTabsActivity.class, validIntent())
+                .create(state);
+        ChromeCustomTabsActivity restored = controller.get();
+
+        connectionCallback(restored).onCustomTabsConnected();
+
+        assertBrowserLaunched(restored);
+        assertTrue(messenger.calls.isEmpty());
+    }
+
+    @Test
+    public void newLoginAfterCancellationCanLaunchBrowser() {
+        ChromeCustomTabsActivity activity = createActivity(validIntent());
+        connectionCallback(activity).onCustomTabsConnected();
+        assertBrowserLaunched(activity);
+        activity.onActivityResult(0, Activity.RESULT_CANCELED, null);
+        controller.destroy();
+
+        ChromeCustomTabsActivity retry = createActivity(validIntent());
+        connectionCallback(retry).onCustomTabsConnected();
+
+        assertBrowserLaunched(retry);
+        assertFalse(retry.isFinishing());
+        assertEquals(1, messenger.calls.size());
+    }
+
+    @Test
+    public void lateServiceConnectionAfterDestructionDoesNotLaunchBrowser() {
+        ChromeCustomTabsActivity activity = createActivity(validIntent());
+        CustomTabActivityHelper.ConnectionCallback callback = connectionCallback(activity);
+        controller.destroy();
+        controller = null;
+
+        callback.onCustomTabsConnected();
+
+        assertNull(Shadows.shadowOf(activity).getNextStartedActivityForResult());
+        assertTrue(messenger.calls.isEmpty());
+    }
+
+    @Test
     public void browserCancellationNotifiesDartAndReleasesChannel() {
         ChromeCustomTabsActivity activity = createActivity(validIntent());
 
@@ -172,6 +280,19 @@ public class ChromeCustomTabsActivityTest {
     private ChromeCustomTabsActivity createActivity(Intent intent) {
         controller = Robolectric.buildActivity(ChromeCustomTabsActivity.class, intent).create();
         return controller.get();
+    }
+
+    private CustomTabActivityHelper.ConnectionCallback connectionCallback(
+            ChromeCustomTabsActivity activity) {
+        return ReflectionHelpers.getField(activity.helper, "mConnectionCallback");
+    }
+
+    private void assertBrowserLaunched(ChromeCustomTabsActivity activity) {
+        ShadowActivity.IntentForResult launched =
+                Shadows.shadowOf(activity).getNextStartedActivityForResult();
+        assertNotNull(launched);
+        assertEquals(0, launched.requestCode);
+        assertEquals(validIntent().getStringExtra("url"), launched.intent.getDataString());
     }
 
     private Intent validIntent() {
