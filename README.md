@@ -6,8 +6,8 @@ Flutter Twitter Login Plugin
 
 # Requirements
 
-- Dart sdk: ">=2.12.0-0 <3.0.0"
-- flutter: ">=1.25.0-8.1.pre"
+- Dart SDK: ">=3.12.0 <4.0.0"
+- Flutter: ">=3.44.0"; enabling built-in Kotlin requires Flutter 3.47.0 or later.
 - Android: minSdkVersion 17 and add support for androidx
 - iOS: --ios-language swift, Xcode version >= 11
 

@@ -156,6 +156,9 @@
 
 ## Unreleased
 
+* Migrate Android builds to built-in Kotlin and require Flutter 3.44/Dart 3.12 or later.
+* Update the Android example to Gradle 9.5.0 and AGP 9.3.1 with built-in Kotlin enabled.
+
 * Prevent Android Custom Tabs from reopening when the login activity restarts, reconnects to the browser service, or is recreated.
 * Safely close Android Custom Tabs activities restored without login parameters or a live browser manager.
 * Preserve browser cancellation callbacks and clean up partially initialized activities.
