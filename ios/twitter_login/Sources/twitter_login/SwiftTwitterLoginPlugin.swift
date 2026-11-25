@@ -29,7 +29,7 @@ public class SwiftTwitterLoginPlugin: NSObject, FlutterPlugin, ASWebAuthenticati
         let args = call.arguments as! NSDictionary
         let url = args["url"] as! String
         let urlScheme = args["redirectURL"] as? String
-        
+
         // iOS12以降
         if #available(iOS 12.0, *) {
             var authSession: ASWebAuthenticationSession?
@@ -69,7 +69,7 @@ public class SwiftTwitterLoginPlugin: NSObject, FlutterPlugin, ASWebAuthenticati
             return
         }
     }
-    
+
     @available(iOS 12.0, *)
     public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         return UIApplication.shared.delegate!.window!!

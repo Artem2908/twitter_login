@@ -156,6 +156,10 @@
 
 ## Unreleased
 
+* Add iOS Swift Package Manager support alongside CocoaPods, sharing the existing authentication implementation.
+* Set the plugin deployment target to iOS 13.0 and support arm64 simulators.
+* Track the example CocoaPods configuration without the nonexistent RunnerTests target.
+
 * Migrate Android builds to built-in Kotlin and require Flutter 3.44/Dart 3.12 or later.
 * Update the Android example to Gradle 9.5.0 and AGP 9.3.1 with built-in Kotlin enabled.
 

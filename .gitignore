@@ -42,3 +42,7 @@ build/
 .project
 .classpath
 .settings
+.build/
+.swiftpm/
+ios/FlutterFramework/
+!example/ios/Podfile
